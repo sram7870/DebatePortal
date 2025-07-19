@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard</title>
+    <script src="{{ url_for('static', filename='dashScript.js') }}"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        offwhite: '#f8f8f5',
+                    },
+                    fontFamily: {
+                        custom: ['Futura', 'Trebuchet MS', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Trebuchet MS"', 'Helvetica', 'sans-serif']
+                    },
+                    colors: {
+                        primaryGreen: {
+                            DEFAULT: '#256d3b',
+                            light: '#4a9867',
+                            dark: '#1d502a',
+                        },
+                        offwhite: '#f8faf6',
+                        calmGray: {
+                            light: '#e6e8e3',
+                            DEFAULT: '#9ca3af',
+                            dark: '#6b7280',
+                        }
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' }
+                        }
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.5s ease-out forwards'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
+
+    <style>
+        body {
+            background-color: #f8faf6;
+            font-family: "Trebuchet MS", Helvetica, sans-serif;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none !important;
+        }
+        #editor {
+            height: 280px;
+            background: white;
+            border: 1px solid #9ca3af;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            overflow-y: auto;
+        }
+        .mood-btn {
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            padding: 0.5rem 0.75rem;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .mood-btn:hover {
+            transform: scale(1.1);
+        }
+        .mood-btn.selected {
+            border-color: #256d3b;
+            background-color: #d1fae5;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            /* You may need to use background-image to create a green highlight effect */
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="green" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/><path fill="white" d="M9 10h1v1H9v-1zM11 10h1v1h-1v-1zM13 10h1v1h-1v-1zM9 12h1v1H9v-1zM11 12h1v1h-1v-1zM13 12h1v1h-1v-1zM9 14h1v1H9v-1zM11 14h1v1h-1v-1zM13 14h1v1h-1v-1z"/></svg>') no-repeat;
+            background-size: cover;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-offwhite text-gray-800 min-h-screen">
+
+<!-- Navigation Bar -->
+<nav class="flex items-center justify-between px-6 py-4 shadow-md bg-white">
+    <div class="flex items-center space-x-4">
+        <!-- Home Button with House Icon -->
+        <a href="{{ url_for('dashboard') }}" class="flex items-center text-gray-800 hover:text-emerald-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6m-6 0v8m-4 0h8" />
+            </svg>
+            <span class="font-medium">Home</span>
+        </a>
+
+        <!-- Vertical Divider -->
+        <div class="h-6 border-l border-gray-400 rounded-full"></div>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="flex space-x-6">
+        <a href="/past" class="text-gray-800 hover:text-emerald-600 font-medium">Past Debates</a>
+        <a href="/debate" class="text-gray-800 hover:text-emerald-600 font-medium">Practice</a>
+        <a href="/build" class="text-gray-800 hover:text-emerald-600 font-medium">Build</a>
+        <a href="#" class="text-gray-800 hover:text-emerald-600 font-medium">In Debate</a>
+    </div>
+</nav>
+
+<!-- Header -->
+<header class="text-center mt-12 mb-8">
+    <h1 class="text-4xl font-bold text-gray-800">
+        Welcome to Debate Portal <span class="text-emerald-600">{{ name }}</span>
+    </h1>
+    <p class="text-lg mt-2">Your email: <span class="font-medium">{{ email }}</span></p>
+</header>
+
+<!-- Main Grid Layout -->
+<div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-8">
+
+    <!-- Task Manager Section -->
+    <section class="mb-16 px-4 md:px-16 animate-fade-in-up">
+        <h2 class="text-3xl font-bold mb-6 text-gray-dark">Your Task Manager</h2>
+
+        <!-- Add Task Form -->
+        <section class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+            <form action="/dashboard/add_task" method="POST" class="grid gap-4">
+                <div>
+                    <label class="block mb-2 font-semibold text-primaryGreen-dark">Task Title:</label>
+                    <input name="title" type="text" placeholder="Enter task title" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light">
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-semibold text-primaryGreen-dark">Description:</label>
+                    <textarea name="description" rows="3" placeholder="Enter full task description" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2 font-semibold text-primaryGreen-dark">Priority:</label>
+                    <select name="priority" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light">
+                        <option value="">Select Priority</option>
+                        <option value="High">🔥 High</option>
+                        <option value="Medium">🌟 Medium</option>
+                        <option value="Low">🍃 Low</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="bg-primaryGreen-dark text-white px-6 py-2 rounded-xl hover:bg-primaryGreen transition mt-4">Add Task</button>
+            </form>
+        </section>
+
+        <!-- Search Field -->
+        <input id="taskSearch" type="text" placeholder="🔍 Search tasks by title or tag..." class="w-full mb-8 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light">
+
+        <!-- Task Cards Grid -->
+        <div id="taskList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for task in tasks %}
+            <div class="task-item bg-white rounded-3xl shadow-md p-6 relative transition hover:shadow-xl" data-title="{{ task.title | lower }}" data-tag="{{ task.tag | lower }}">
+                <div class="flex flex-col gap-2">
+                    <h3 class="text-xl font-semibold text-gray-800">{{ task.title }}</h3>
+                    <p class="text-gray-600 text-sm italic">{{ task.summary }}</p>
+                    <span class="inline-block bg-gray-200 text-primaryGreen-dark px-3 py-1 rounded-full text-xs font-medium mt-1">#{{ task.tag }}</span>
+                    <span class="text-sm text-gray-500 mt-1">Priority: {{ task.priority or "N/A" }}</span>
+                </div>
+
+                <!-- View Full Description Button -->
+                <button onclick="openModal({{ task.id }})" class="absolute top-3 right-3 text-primaryGreen-dark hover:underline text-sm">View</button>
+
+                <!-- Delete Form -->
+                <form action="/dashboard/delete_task/{{ task.id }}" method="POST" class="mt-4">
+                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm">🗑 Delete</button>
+                </form>
+            </div>
+
+            <!-- Modal -->
+            <div id="modal-{{ task.id }}" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-2xl shadow-lg p-6 w-11/12 max-w-lg relative">
+                    <h2 class="text-2xl font-bold text-primaryGreen-dark mb-4">{{ task.title }}</h2>
+                    <p class="text-gray-700 mb-6 whitespace-pre-wrap">{{ task.description }}</p>
+                    <button onclick="closeModal({{ task.id }})" class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-xl">×</button>
+                    <button onclick="closeModal({{ task.id }})" class="mt-4 bg-primaryGreen-dark text-white px-4 py-2 rounded-lg hover:bg-primaryGreen w-full">Close</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<div class="max-w-7xl mx-auto px-6 mb-40 space-y-12 mt-12">
+
+    <!-- Row 1: Alerts + Events -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Alerts -->
+        <section>
+            <h2 class="text-2xl font-semibold mb-4">Alerts</h2>
+            <div class="space-y-3">
+                {% for alert in alerts %}
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded">
+                    {{ alert.message }}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic">No alerts.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Upcoming Events -->
+        <section>
+            <h2 class="text-2xl font-semibold mb-4">Upcoming Events</h2>
+            <ul class="space-y-3">
+                {% for event in events %}
+                <li class="bg-white p-4 rounded shadow border-l-4 border-emerald-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-medium">{{ event.name }}</p>
+                            <p class="text-sm text-gray-500">{{ event.date }}</p>
+                        </div>
+                        <span class="text-sm text-gray-600">{{ event.countdown }}</span>
+                    </div>
+                </li>
+                {% else %}
+                <p class="text-gray-500 italic">No upcoming events.</p>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-8">
+        <section class="mb-16 px-4 md:px-16 animate-fade-in-up">
+            <h2 class="text-3xl font-bold mb-6 text-primaryGreen-dark">Your Tournaments</h2>
+
+            <!-- Add Tournament Form -->
+            <section class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                <form action="{{ url_for('add_tournament') }}" method="POST" class="grid gap-4">
+                    <div>
+                        <label class="block mb-2 font-semibold text-primaryGreen-dark">Tournament Name:</label>
+                        <input
+                                name="name"
+                                type="text"
+                                placeholder="Enter tournament name"
+                                required
+                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block mb-2 font-semibold text-primaryGreen-dark">Date:</label>
+                        <input
+                                name="date"
+                                type="date"
+                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block mb-2 font-semibold text-primaryGreen-dark">Description:</label>
+                        <textarea
+                                name="description"
+                                rows="3"
+                                placeholder="Enter tournament description"
+                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"
+                        ></textarea>
+                    </div>
+
+                    <button
+                            type="submit"
+                            class="bg-primaryGreen-dark text-white px-6 py-2 rounded-xl hover:bg-primaryGreen transition mt-4"
+                    >
+                        Add Tournament
+                    </button>
+                </form>
+            </section>
+
+            <!-- Search Field -->
+            <input
+                    id="tournamentSearch"
+                    type="text"
+                    placeholder="🔍 Search tournaments by name or description..."
+                    class="w-full mb-8 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"
+            />
+
+            <!-- Tournament Cards Grid -->
+            <div id="tournamentList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for tournament in tournaments %}
+                <div
+                        class="tournament-item bg-white rounded-3xl shadow-md p-6 relative transition hover:shadow-xl"
+                        data-name="{{ tournament.name | lower }}"
+                        data-description="{{ tournament.description | lower }}"
+                >
+                    <div class="flex flex-col gap-2">
+                        <h3 class="text-xl font-semibold text-gray-800">{{ tournament.name }}</h3>
+                        <p class="text-gray-600 text-sm italic">{{ tournament.description or "No description" }}</p>
+                        {% if tournament.date %}
+                        <span class="inline-block bg-gray-200 text-primaryGreen-dark px-3 py-1 rounded-full text-xs font-medium mt-1">{{ tournament.date }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- View Full Details Button -->
+                    <button
+                            onclick="openModal({{ tournament.id }})"
+                            class="absolute top-3 right-3 text-primaryGreen-dark hover:underline text-sm"
+                    >
+                        View
+                    </button>
+
+                    <!-- Delete Tournament Form -->
+                    <form
+                            action="{{ url_for('delete_tournament', tournament_id=tournament.id) }}"
+                            method="POST"
+                            class="mt-4"
+                            onsubmit="return confirm('Are you sure you want to delete this tournament? This will delete all associated files.')"
+                    >
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-sm">🗑 Delete</button>
+                    </form>
+                </div>
+
+                <!-- Modal -->
+                <div
+                        id="modal-{{ tournament.id }}"
+                        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+                >
+                    <div class="bg-white rounded-2xl shadow-lg p-6 w-11/12 max-w-lg relative max-h-[90vh] overflow-y-auto">
+                        <h2 class="text-2xl font-bold text-primaryGreen-dark mb-4">{{ tournament.name }}</h2>
+                        <p class="text-gray-700 mb-4 whitespace-pre-wrap">{{ tournament.description or "No description" }}</p>
+                        {% if tournament.date %}
+                        <p class="mb-4 text-sm text-gray-600">Date: {{ tournament.date }}</p>
+                        {% endif %}
+
+                        <h3 class="font-semibold mb-2">Feedback and Files</h3>
+                        <ul class="mb-4 list-disc list-inside max-h-48 overflow-y-auto border border-gray-300 rounded p-3">
+                            {% for f in tournament.files %}0
+                            <li class="flex justify-between items-center">
+                                <a href="{{ url_for('download_tournament_file', file_id=f.id) }}" class="text-blue-600 hover:underline">
+                                    {{ f.filename }}
+                                </a>
+                                <form
+                                        action="{{ url_for('delete_tournament_file', file_id=f.id) }}"
+                                        method="POST"
+                                        class="ml-2"
+                                        onsubmit="return confirm('Delete this file?')"
+                                >
+                                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm">🗑</button>
+                                </form>
+                            </li>
+                            {% else %}
+                            <li class="italic text-gray-500">No files uploaded yet.</li>
+                            {% endfor %}
+                        </ul>
+
+                        <!-- Upload New File Form -->
+                        <form
+                                action="{{ url_for('upload_tournament_file', tournament_id=tournament.id) }}"
+                                method="POST"
+                                enctype="multipart/form-data"
+                                class="flex gap-3"
+                        >
+                            <input
+                                    type="file"
+                                    name="file"
+                                    required
+                                    class="border rounded px-3 py-2 flex-grow"
+                            />
+                            <button
+                                    type="submit"
+                                    class="bg-primaryGreen-dark text-white px-4 py-2 rounded-lg hover:bg-primaryGreen"
+                            >
+                                Upload File
+                            </button>
+                        </form>
+
+                        <button
+                                onclick="closeModal({{ tournament.id }})"
+                                class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-xl"
+                        >
+                            ×
+                        </button>
+                        <button
+                                onclick="closeModal({{ tournament.id }})"
+                                class="mt-4 bg-primaryGreen-dark text-white px-4 py-2 rounded-lg hover:bg-primaryGreen w-full"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+</div>
+
+</body>
+</html>

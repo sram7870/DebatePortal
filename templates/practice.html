@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Mock Policy Debate</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .chat-msg {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<nav class="flex items-center justify-between px-6 py-4 shadow-md bg-white">
+  <div class="flex items-center space-x-4">
+    <!-- Home Button with House Icon -->
+    <a href="{{ url_for('dashboard') }}" class="flex items-center text-gray-800 hover:text-emerald-600">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6m-6 0v8m-4 0h8" />
+      </svg>
+      <span class="font-medium">Home</span>
+    </a>
+
+    <!-- Vertical Divider -->
+    <div class="h-6 border-l border-gray-400 rounded-full"></div>
+  </div>
+
+  <!-- Navigation Links -->
+  <div class="flex space-x-6">
+    <a href="/past" class="text-gray-800 hover:text-emerald-600 font-medium">Past Debates</a>
+    <a href="/debate" class="text-gray-800 hover:text-emerald-600 font-medium">Practice</a>
+    <a href="/build" class="text-gray-800 hover:text-emerald-600 font-medium">Build</a>
+    <a href="#" class="text-gray-800 hover:text-emerald-600 font-medium">In Debate</a>
+  </div>
+</nav>
+<body class="bg-gray-50 text-gray-800">
+<div class="flex flex-col lg:flex-row min-h-screen">
+  <!-- Main Debate Section -->
+  <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+    <!-- Speech Input -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h2 id="speech-label" class="text-2xl font-semibold text-green-800 mb-2">Current Speech: 1AC</h2>
+      <div class="text-lg mb-4" id="speech-timer">Time: 8:00</div>
+      <div class="flex gap-4 mb-4">
+        <button class="bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700" onclick="startSpeech()">Start Speech</button>
+        <button class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600" onclick="endSpeech()">End Speech</button>
+      </div>
+      <textarea id="transcript" class="w-full h-40 p-4 border border-gray-300 rounded-lg text-sm mb-4 resize-y" placeholder="Speech transcript will appear here..." readonly></textarea>
+      <div class="text-sm text-gray-500">Speech-to-text automatically captures your speech during the round.</div>
+    </div>
+
+    <!-- AI Opponent Response -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-2">AI Opponent Response</h3>
+      <div id="ai-response" class="bg-gray-100 p-4 rounded-lg text-sm h-40 overflow-y-auto">AI will respond to your arguments after each speech.</div>
+    </div>
+
+    <!-- Debate Flow Chart (Unlocked at End) -->
+    <div id="flowchart-card" class="hidden bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-4">Argument Flow Diagram</h3>
+      <canvas id="flowchart" height="200"></canvas>
+    </div>
+
+    <!-- Debate History -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-2">Speech History</h3>
+      <textarea id="debate-history" class="w-full h-48 p-4 border border-gray-300 rounded-lg text-sm resize-y" readonly></textarea>
+    </div>
+
+    <!-- AI Generated Summary -->
+    <div id="summary-card" class="hidden bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-2">Round Summary</h3>
+      <div id="summary-feedback" class="bg-gray-100 p-4 rounded-lg text-sm h-40 overflow-y-auto">Summary will be available after the round ends.</div>
+    </div>
+
+    <!-- Redo Speech / Collapse Path Suggestions -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-2">Strategic Suggestions</h3>
+      <ul class="list-disc pl-6 space-y-2 text-sm">
+        <li>Redo Speech: Consider redoing the 1AC to strengthen your internal link story.</li>
+        <li>Collapse Path: Consider collapsing onto the advantage about global trade in the 2NR.</li>
+        <li>Judge Adaptation: Assume tech-leaning judge — emphasize conditionality debate.</li>
+      </ul>
+    </div>
+
+    <!-- Download Button -->
+    <div class="bg-white rounded-3xl shadow-xl p-8 text-center transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <button class="bg-green-800 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition" onclick="downloadDebateFiles()">Download All Debate Files</button>
+    </div>
+  </div>
+
+  <!-- Sidebar AI Assistant -->
+  <div class="w-full lg:w-1/3 bg-white rounded-3xl shadow-xl p-8 m-6 transition duration-300 hover:shadow-2xl animate-fadeIn">
+    <h3 class="text-2xl font-semibold text-green-800 mb-4">Live AI Assistant</h3>
+    <div id="chat-box" class="h-64 overflow-y-auto bg-gray-100 p-4 rounded-lg text-sm space-y-2 mb-4">
+      <div class="chat-msg">AI: I'm ready to offer suggestions at any time!</div>
+    </div>
+    <textarea id="user-query" class="w-full p-3 border border-gray-300 rounded-lg text-sm mb-2" placeholder="Ask about collapse paths, judge adaptation, etc..."></textarea>
+    <button class="bg-green-800 text-white w-full py-2 rounded-lg hover:bg-green-700 transition mb-6" onclick="askAssistant()">Ask Assistant</button>
+
+    <div class="border-t border-gray-200 pt-4">
+      <h4 class="text-lg font-medium text-green-800 mb-2">Settings</h4>
+      <label class="block mb-2">Opponent ELO:
+        <input type="number" id="elo" value="2000" max="3000" min="1000" class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+      </label>
+      <label class="block">Side:
+        <select id="side" class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+          <option>Aff</option>
+          <option>Neg</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+  let timer;
+  let timeLeft = 8 * 60;
+  let currentSpeech = "1AC";
+  let transcriptText = "";
+  let flowData = [];
+
+  // Speech Recognition setup
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      interim += event.results[i][0].transcript;
+    }
+    document.getElementById('transcript').value = interim;
+  };
+
+  function startSpeech() {
+    clearInterval(timer);
+    document.getElementById("transcript").value = "";
+    document.getElementById("ai-response").textContent = "Waiting for your speech...";
+    timeLeft = 8 * 60;
+    transcriptText = "";
+    timer = setInterval(() => {
+      timeLeft--;
+      let mins = Math.floor(timeLeft / 60);
+      let secs = timeLeft % 60;
+      document.getElementById("speech-timer").innerText = `Time: ${mins}:${secs.toString().padStart(2, '0')}`;
+      if (timeLeft <= 0) endSpeech();
+    }, 1000);
+    recognition.start();
+  }
+
+  async function endSpeech() {
+    clearInterval(timer);
+    recognition.stop();
+
+    const transcript = document.getElementById("transcript").value.trim();
+    if (!transcript) {
+      alert("No speech detected!");
+      return;
+    }
+
+    // Append speech transcript to history box
+    document.getElementById("debate-history").value += `\n[${currentSpeech}]\n${transcript}\n`;
+
+    // Add to flowData for flowchart
+    flowData.push({ label: currentSpeech, text: transcript });
+
+    // Call backend AI respond route
+    document.getElementById("ai-response").textContent = "AI is thinking...";
+    try {
+      const side = document.getElementById("side").value;
+      const elo = parseInt(document.getElementById("elo").value) || 2000;
+
+      // Send prompt to AI backend for response
+      const aiResp = await axios.post('/api/debate/ai/respond', { prompt: transcript });
+      const aiResponseText = aiResp.data.response || "AI failed to respond.";
+
+      document.getElementById("ai-response").textContent = aiResponseText;
+
+      // Save debate state to backend
+      const user_id = 1;  // Replace with real authenticated user id
+      const title = "Mock Debate"; // Could be dynamic or user input
+      await axios.post('/api/debate/save', {
+        user_id,
+        title,
+        side,
+        elo,
+        transcript,
+        ai_responses: aiResponseText,
+        summary: ""
+      });
+
+    } catch (error) {
+      console.error("Error during AI response or saving debate:", error);
+      document.getElementById("ai-response").textContent = "Error communicating with AI backend.";
+    }
+
+    // Move to next speech
+    const next = getNextSpeech(currentSpeech);
+    if (next === "2AR") {
+      await fetchDebateHistory();
+      await generateFlowchartFromBackend();
+      showSummary();
+      showFlowchart();
+    }
+
+    currentSpeech = next;
+    document.getElementById("speech-label").innerText = `Current Speech: ${currentSpeech}`;
+    document.getElementById("transcript").value = "";  // reset for next speech
+  }
+
+  function getNextSpeech(current) {
+    const order = ["1AC", "CX", "1NC", "2AC", "CX", "2NC", "1NR", "1AR", "2NR", "2AR"];
+    const idx = order.indexOf(current);
+    return order[(idx + 1) % order.length];
+  }
+
+  function getOpposingSide() {
+    return document.getElementById("side").value === "Aff" ? "Neg" : "Aff";
+  }
+
+  async function askAssistant() {
+    const input = document.getElementById("user-query").value.trim();
+    if (!input) return;
+    const chatBox = document.getElementById("chat-box");
+    chatBox.innerHTML += `<div class='chat-msg'>You: ${input}</div>`;
+
+    try {
+      const resp = await axios.post('/api/debate/ai/respond', { prompt: input });
+      chatBox.innerHTML += `<div class='chat-msg'>AI: ${resp.data.response}</div>`;
+    } catch {
+      chatBox.innerHTML += `<div class='chat-msg'>AI: Sorry, failed to get response.</div>`;
+    }
+
+    document.getElementById("user-query").value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function fetchDebateHistory() {
+    try {
+      const user_id = 1; // Replace with actual user ID
+      const resp = await axios.get('/api/debate/history', { params: { user_id } });
+      const debates = resp.data.debates || [];
+      const historyArea = document.getElementById("debate-history");
+      let historyText = "";
+
+      debates.forEach(d => {
+        historyText += `[${d.timestamp}] ${d.side} - ${d.title}\nTranscript:\n${d.transcript}\nAI Response:\n${d.ai_responses}\n\n`;
+      });
+
+      historyArea.value = historyText;
+    } catch (err) {
+      console.error("Failed to fetch debate history:", err);
+    }
+  }
+
+  async function generateFlowchartFromBackend() {
+    try {
+      const resp = await axios.post('/api/debate/flowchart', { speeches: flowData });
+      const flowchartNodes = resp.data.flowchart || [];
+
+      // Update Chart.js with new data
+      const ctx = document.getElementById("flowchart").getContext("2d");
+      const labels = flowchartNodes.map(n => n.label);
+      const data = flowchartNodes.map(n => n.complexity_score);
+
+      // Destroy old chart if exists
+      if (window.flowChartInstance) window.flowChartInstance.destroy();
+
+      window.flowChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Argument Complexity Score',
+            data,
+            borderColor: 'rgb(22, 163, 74)',
+            backgroundColor: 'rgba(22, 163, 74, 0.2)',
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Flowchart: Argumentation Progression' }
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error generating flowchart from backend:", error);
+    }
+  }
+
+  function showSummary() {
+    document.getElementById("summary-card").classList.remove("hidden");
+    document.getElementById("summary-feedback").textContent = "Summary: Both sides engaged with high clash. AI suggests the aff's solvency was underdeveloped while neg presented consistent strategic framing across speeches.";
+  }
+
+  function showFlowchart() {
+    document.getElementById("flowchart-card").classList.remove("hidden");
+  }
+
+  function downloadDebateFiles() {
+    const history = document.getElementById("debate-history").value;
+    const ai = document.getElementById("ai-response").textContent;
+    const summary = document.getElementById("summary-feedback").textContent;
+    const fullText = `Debate Transcript:\n${history}\n\nAI Responses:\n${ai}\n\nRound Summary:\n${summary}`;
+    const blob = new Blob([fullText], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "mock_debate_summary.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+</body>
+</html>

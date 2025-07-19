@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debate Round Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Trebuchet MS"', 'Helvetica', 'sans-serif']
+                    },
+                    colors: {
+                        primaryGreen: {
+                            DEFAULT: '#256d3b',
+                            light: '#4a9867',
+                            dark: '#1d502a'
+                        },
+                        offwhite: '#f8faf6',
+                        calmGray: {
+                            light: '#e6e8e3',
+                            DEFAULT: '#9ca3af',
+                            dark: '#6b7280'
+                        }
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' }
+                        }
+                    },
+                    animation: {
+                        fadeIn: 'fadeIn 0.5s ease-out forwards'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8faf6;
+        }
+    </style>
+</head>
+<body class="text-primaryGreen font-sans bg-offwhite min-h-screen">
+<nav class="bg-[#f9f9f6] shadow-sm border-b border-gray-200 py-4 px-8 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+        <i data-feather="activity" class="w-5 h-5 text-[#2f5930]"></i>
+        <span class="text-lg font-bold text-[#2f5930] tracking-wide">Round Analyzer</span>
+    </div>
+    <a href="{{ url_for('past_debates') }}" class="text-primaryGreen-dark hover:underline text-sm">← Back to Past Debate Analyzer</a>
+</nav>
+<section>
+    <main class="max-w-6xl mx-auto py-10 px-6 animate-fadeIn">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-black mb-2">Round Analysis</h1>
+            <p class="text-primaryGreen-dark text-lg italic">Detailed feedback by AI for each speech and the round as a whole</p>
+        </header>
+
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.x.x/dist/tailwind.min.css" rel="stylesheet" />
+
+        <div class="max-w-5xl mx-auto p-6" x-data="debateAnalysis()">
+
+            <!-- Speech Tabs -->
+            <nav class="flex space-x-4 border-b border-gray-300 mb-6">
+                <template x-for="(speech, index) in speeches" :key="speech.id">
+                    <button
+                            @click="selected = index"
+                            :class="selected === index
+                      ? 'border-green-800 text-green-800 border-b-2 font-semibold'
+                      : 'text-gray-600 hover:text-green-800'"
+                            class="pb-2 px-4 -mb-px transition"
+                            x-text="speech.name"
+                            type="button"
+                    ></button>
+                </template>
+            </nav>
+
+            <!-- Speech Feedback Panels -->
+            <template x-for="(speech, index) in speeches" :key="speech.id">
+                <section x-show="selected === index" class="space-y-6" x-cloak>
+
+                    <!-- CONTENT FEEDBACK -->
+                    <div x-data="{ open: true }" class="bg-white rounded-3xl shadow-xl p-8 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <button
+                                @click="open = !open"
+                                class="flex justify-between w-full text-left text-xl font-semibold text-gray-800 hover:text-green-600 transition"
+                                :aria-expanded="open.toString()"
+                                :aria-controls="'content-' + speech.id"
+                        >
+                            Content Feedback
+                            <span x-text="open ? '-' : '+' " class="text-2xl font-bold"></span>
+                        </button>
+                        <div x-show="open" x-collapse id="content" class="mt-3 space-y-2 text-gray-700">
+                            <p><strong>Argument clarity:</strong> <span x-text="speech.feedback.content.argumentClarity"></span></p>
+                            <p><strong>Evidence quality:</strong> <span x-text="speech.feedback.content.evidenceQuality"></span></p>
+                            <p><strong>Internal link chains:</strong> <span x-text="speech.feedback.content.internalLinkChains"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- STRATEGIC EXECUTION -->
+                    <div x-data="{ open: false }" class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <button
+                                @click="open = !open"
+                                class="flex justify-between w-full text-left text-xl font-semibold text-gray-800 hover:text-green-600 transition"
+                                :aria-expanded="open.toString()"
+                                :aria-controls="'strategy-' + speech.id"
+                        >
+                            Strategic Execution
+                            <span x-text="open ? '-' : '+' " class="text-2xl font-bold"></span>
+                        </button>
+                        <div x-show="open" x-collapse id="strategy" class="mt-4 space-y-2 text-gray-700">
+                            <p><strong>Argument selection:</strong> <span x-text="speech.feedback.strategy.argumentSelection"></span></p>
+                            <p><strong>Clash:</strong> <span x-text="speech.feedback.strategy.clash"></span></p>
+                            <p><strong>Depth vs. breadth:</strong> <span x-text="speech.feedback.strategy.depthVsBreadth"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- STYLE AND STRUCTURE -->
+                    <div x-data="{ open: false }" class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <button
+                                @click="open = !open"
+                                class="flex justify-between w-full text-left text-xl font-semibold text-gray-800 hover:text-green-600 transition"
+                                :aria-expanded="open.toString()"
+                                :aria-controls="'style-' + speech.id"
+                        >
+                            Style and Structure
+                            <span x-text="open ? '-' : '+' " class="text-2xl font-bold"></span>
+                        </button>
+                        <div x-show="open" x-collapse id="style" class="mt-4 space-y-2 text-gray-700">
+                            <p><strong>Organization:</strong> <span x-text="speech.feedback.style.organization"></span></p>
+                            <p><strong>Time allocation:</strong> <span x-text="speech.feedback.style.timeAllocation"></span></p>
+                            <p><strong>Persuasiveness:</strong> <span x-text="speech.feedback.style.persuasiveness"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- TECHNICAL ARGUMENT EVALUATION -->
+                    <div x-data="{ open: false }" class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <button
+                                @click="open = !open"
+                                class="flex justify-between w-full text-left text-xl font-semibold text-gray-800 hover:text-green-600 transition"
+                                :aria-expanded="open.toString()"
+                                :aria-controls="'technical-' + speech.id"
+                        >
+                            Technical Argument Evaluation
+                            <span x-text="open ? '-' : '+' " class="text-2xl font-bold"></span>
+                        </button>
+                        <div x-show="open" x-collapse id="technical" class="mt-4 space-y-2 text-gray-700">
+                            <p><strong>Dropped arguments:</strong> <span x-text="speech.feedback.technical.droppedArguments"></span></p>
+                            <p><strong>Ineffective responses:</strong> <span x-text="speech.feedback.technical.ineffectiveResponses"></span></p>
+                            <p><strong>Overviews and weighing:</strong> <span x-text="speech.feedback.technical.overviewsWeighing"></span></p>
+                            <p><strong>Use of theory/T-presses/Ks:</strong> <span x-text="speech.feedback.technical.useOfTheory"></span></p>
+                        </div>
+                    </div>
+                    <div x-data="{ open: false }" class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <button
+                                @click="open = !open"
+                                class="flex justify-between w-full text-left text-xl font-semibold text-gray-800 hover:text-green-600 transition"
+                                :aria-expanded="open.toString()"
+                                :aria-controls="'technical-' + speech.id"
+                        >
+                            Revised Speech Section
+                            <span x-text="open ? '-' : '+' " class="text-2xl font-bold"></span>
+                        </button>
+                        <div x-show="open" x-collapse id="technical" class="mt-4 space-y-2 text-gray-700">
+                            <p>Here is where the revised script would be</p>
+                        </div>
+                    </div>
+
+                </section>
+            </template>
+
+        </div>
+
+        <script>
+            function debateAnalysis() {
+                return {
+                    selected: 0,
+                    speeches: [
+                        {
+                            id: '1ac',
+                            name: '1AC',
+                            feedback: {
+                                content: {
+                                    argumentClarity: "The tags and impacts are generally clear, though a few warrants could be more explicit.",
+                                    evidenceQuality: "Most evidence is from credible recent sources, but one citation is outdated.",
+                                    internalLinkChains: "Arguments follow logically, but some link chains could be strengthened.",
+                                },
+                                strategy: {
+                                    argumentSelection: "Good strategic choices given the round state, prioritizing offense.",
+                                    clash: "Directly addresses most opponent arguments with minimal skirting.",
+                                    depthVsBreadth: "Focuses well on depth with only minor shallow points.",
+                                },
+                                style: {
+                                    organization: "Speech is well-structured with clear signposting.",
+                                    timeAllocation: "Time is mostly well-managed, though more could be spent on the strongest offense.",
+                                    persuasiveness: "Rhetoric is compelling and logic flows smoothly.",
+                                },
+                                technical: {
+                                    droppedArguments: "Two minor dropped arguments on link turns.",
+                                    ineffectiveResponses: "Some ineffective answers on theory arguments.",
+                                    overviewsWeighing: "Overviews frame the round effectively.",
+                                    useOfTheory: "Theory and T-presses executed with appropriate framing.",
+                                },
+                            },
+                        },
+                        {
+                            id: '1nc',
+                            name: '1NC',
+                            feedback: {
+                                content: {
+                                    argumentClarity: "Arguments are mostly clear but some impacts need more detail.",
+                                    evidenceQuality: "Evidence is relevant but not always the most current.",
+                                    internalLinkChains: "Logical consistency is good with few lapses.",
+                                },
+                                strategy: {
+                                    argumentSelection: "Strategic choices are somewhat scattered; more focus needed.",
+                                    clash: "Addresses most key points but misses some opportunities.",
+                                    depthVsBreadth: "Some breadth sacrificed for insufficient depth in key areas.",
+                                },
+                                style: {
+                                    organization: "Speech structure could be clearer and better signposted.",
+                                    timeAllocation: "Uneven time allocation across arguments.",
+                                    persuasiveness: "Persuasive at times but lacks consistency.",
+                                },
+                                technical: {
+                                    droppedArguments: "One major dropped argument noted.",
+                                    ineffectiveResponses: "Several ineffective responses on off-case issues.",
+                                    overviewsWeighing: "Overviews occasionally lack clarity.",
+                                    useOfTheory: "Theory usage is uneven and sometimes unclear.",
+                                },
+                            },
+                        },
+                        // Add more speech objects here
+                    ],
+                };
+            }
+        </script>
+        <div class="p-6">
+            <div class="mt-10">
+                <div class=" p-6 rounded-xl">
+                    <h2 class="text-green-800 text-lg font-bold mb-4">In-Depth AI Feedback Commentary</h2>
+                    <div class="bg-white rounded-3xl shadow-xl p-8 mb-10 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                        <p class="mb-6 text-gray-800">
+                            The feedback below represents a comprehensive AI-driven assessment of each component of the debate round. It is designed to help debaters understand not just surface-level successes and failures, but the deeper patterns of strategic reasoning, argumentative rigor, stylistic clarity, and technical execution. Each section is rooted in round theory, judge expectations, and successful debating strategies derived from thousands of round samples.
+                        </p>
+
+                        <p class="mb-6 text-gray-800">
+                            <strong>Content Feedback:</strong> Argument clarity is foundational to debate. In this round, your tags were often sharp and well-labeled, but in some cases, the warrants lacked depth or contextual linkage to the broader advocacy. Your evidence was generally current and relevant, though several cards suffered from insufficient qualification or incomplete citations, which may hurt ethos with a discerning judge. The internal link chains connecting uniqueness to impact were present but at times fragile, particularly in the economic disadvantage. One suggestion is to frame internal links with analogies or mini-warrants to reinforce them logically and intuitively.
+                        </p>
+
+                        <p class="mb-6 text-gray-800">
+                            <strong>Strategic Execution:</strong> Your argument selection showed awareness of the round context, especially in 2AC and 2NR decisions. You chose to collapse onto offense rather than over-defend a weakening disadvantage, which reflects good strategic instincts. However, clash was uneven. While some responses were direct and devastating (e.g., the theory press against topicality), others danced around the link story without directly addressing the internal warrant (especially in 2AC vs. 1NC Spending DA). Your strategy leaned toward breadth in earlier speeches and depth later — a sensible approach — but the transition could have been cleaner with clearer strategic signposting.
+                        </p>
+
+                        <p class="mb-6 text-gray-800">
+                            <strong>Style and Structure:</strong> The speech organization improved as the round progressed. The 1AC and 1NC lacked effective signposting, making it difficult for a judge to follow the flow without heavy note-taking. In contrast, the 2NR was clear, well-paced, and persuasively framed with consistent language. Time allocation favored higher-order issues by the end, but the 1AR was still spending 15+ seconds on dropped analytics — consider re-allocating that time to new impact weighing or framing. Your rhetorical moments (especially the ethos-based framing in the 2AR) stood out and would land effectively with both lay and circuit judges.
+                        </p>
+
+                        <p class="mb-6 text-gray-800">
+                            <strong>Technical Argument Evaluation:</strong> The AI detected several dropped arguments, including the solvency deficit in the case turn and the second link to the States counterplan. These concessions were not terminal but reduced your strategic leverage later. Some responses (particularly against conditionality) were not fully developed, with limited weighing or voters. Your use of theory was tactically appropriate but lacked follow-through — if you're going to go for condo, make sure the standards are extended in the final rebuttal. Lastly, overviews and weighing improved significantly in the second half of the round, especially when you framed impact calculus in terms of judge-ballot obligations. That's elite-level framing — keep doing that.
+                        </p>
+
+                        <p class="text-gray-800">
+                            Going forward, consider training yourself to recognize when an argument is strategically redundant — being willing to drop low-leverage offense early signals maturity and lets you concentrate rhetorical firepower where it matters. Also, continue practicing internal link framing drills — these will help you build more watertight logical scaffolding. Great progress.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <h2 class="text-green-800 text-lg font-bold mb-4 mt-12">Visual Argument Flowchart</h2>
+            <div class=" p-6 rounded-xl">
+                <div class="bg-white rounded-3xl shadow-xl p-8 transition-shadow duration-300 hover:shadow-2xl animate-fadeIn">
+                    <img src="build.html">
+                </div>
+            </div>
+
+        </div>
+    </main>
+</section>
+</body>
+</html>

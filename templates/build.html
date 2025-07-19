@@ -1,0 +1,449 @@
+<head>
+<title>Dashboard</title>
+<script src="{{ url_for('static', filename='dashScript.js') }}"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    offwhite: '#f8f8f5',
+                },
+                fontFamily: {
+                    custom: ['Futura', 'Trebuchet MS', 'sans-serif'],
+                },
+            },
+        },
+    }
+</script>
+<!-- TailwindCSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['"Trebuchet MS"', 'Helvetica', 'sans-serif']
+                },
+                colors: {
+                    primaryGreen: {
+                        DEFAULT: '#256d3b',
+                        light: '#4a9867',
+                        dark: '#1d502a',
+                    },
+                    offwhite: '#f8faf6',
+                    calmGray: {
+                        light: '#e6e8e3',
+                        DEFAULT: '#9ca3af',
+                        dark: '#6b7280',
+                    }
+                },
+                keyframes: {
+                    fadeIn: {
+                        '0%': { opacity: 0, transform: 'translateY(10px)' },
+                        '100%': { opacity: 1, transform: 'translateY(0)' }
+                    }
+                },
+                animation: {
+                    fadeIn: 'fadeIn 0.5s ease-out forwards'
+                }
+            }
+        }
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='chatbot.js') }}"></script>
+
+<style>
+    body {
+        background-color: #f8faf6;
+        font-family: "Trebuchet MS", Helvetica, sans-serif;
+    }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        box-shadow: none !important;
+    }
+    #editor {
+        height: 280px;
+        background: white;
+        border: 1px solid #9ca3af;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        overflow-y: auto;
+    }
+    .mood-btn {
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        padding: 0.5rem 0.75rem;
+        font-size: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .mood-btn:hover {
+        transform: scale(1.1);
+    }
+    .mood-btn.selected {
+        border-color: #256d3b;
+        background-color: #d1fae5;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        /* You may need to use background-image to create a green highlight effect */
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="green" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/><path fill="white" d="M9 10h1v1H9v-1zM11 10h1v1h-1v-1zM13 10h1v1h-1v-1zM9 12h1v1H9v-1zM11 12h1v1h-1v-1zM13 12h1v1h-1v-1zM9 14h1v1H9v-1zM11 14h1v1h-1v-1zM13 14h1v1h-1v-1z"/></svg>') no-repeat;
+        background-size: cover;
+        cursor: pointer;
+    }
+</style>
+</head>
+
+<body>
+
+<nav class="flex items-center justify-between px-6 py-4 shadow-md bg-white">
+    <div class="flex items-center space-x-4">
+        <!-- Home Button with House Icon -->
+        <a href="{{ url_for('dashboard') }}" class="flex items-center text-gray-800 hover:text-emerald-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6m-6 0v8m-4 0h8" />
+            </svg>
+            <span class="font-medium">Home</span>
+        </a>
+
+        <!-- Vertical Divider -->
+        <div class="h-6 border-l border-gray-400 rounded-full"></div>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="flex space-x-6">
+        <a href="/past" class="text-gray-800 hover:text-emerald-600 font-medium">Past Debates</a>
+        <a href="/debate" class="text-gray-800 hover:text-emerald-600 font-medium">Practice</a>
+        <a href="/build" class="text-gray-800 hover:text-emerald-600 font-medium">Build</a>
+        <a href="#" class="text-gray-800 hover:text-emerald-600 font-medium">In Debate</a>
+    </div>
+</nav>
+
+<!-- Header -->
+<header class="text-center mt-12 mb-8">
+    <h1 class="text-4xl font-bold text-gray-800">
+        Build Your Cases!
+    </h1>
+    <p class="text-lg mt-2">Utalize AI feedback and modern tools to acheive perfection!</p>
+</header>
+
+<!-- Main Grid Layout -->
+<div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-8">
+    <section class="mb-16 px-4 md:px-16 animate-fadeIn">
+        <h2 class="text-3xl font-bold mb-6 text-primaryGreen-dark">Your Case Files</h2>
+
+        <!-- Add Folder Form -->
+        <section class="bg-white rounded-3xl shadow-xl p-8 mb-10 hover:shadow-2xl transition-shadow">
+            <form action="{{ url_for('add_folder') }}" method="POST" class="grid gap-4">
+                <div>
+                    <label class="block mb-2 font-semibold text-primaryGreen-dark">Folder Name:</label>
+                    <input name="name" type="text" required placeholder="e.g. Solvency"
+                           class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light" />
+                </div>
+                <div>
+                    <label class="block mb-2 font-semibold text-primaryGreen-dark">Your Summary:</label>
+                    <textarea name="user_summary" rows="2" placeholder="Add a short description or summary..."
+                              class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"></textarea>
+                </div>
+                <button type="submit"
+                        class="bg-primaryGreen-dark text-white px-6 py-2 rounded-xl hover:bg-primaryGreen transition mt-4">
+                    Add Folder
+                </button>
+            </form>
+        </section>
+
+        <!-- Search Bar -->
+        <input id="folderSearch" type="text" placeholder="🔍 Search folders..."
+               class="w-full mb-8 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light" />
+
+        <!-- Folder Cards -->
+        <div id="folderList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+            {% for folder in folders %}
+            <div class="folder-item bg-white rounded-3xl shadow-md p-10 relative transition hover:shadow-xl"
+                 data-name="{{ folder.name | lower }}">
+                <div class="flex flex-col gap-2">
+                    <h3 class="text-xl font-semibold text-gray-800">{{ folder.name }}</h3>
+                    <p class="text-gray-600 text-sm italic">{{ folder.user_summary or 'No summary yet' }}</p>
+                    <button onclick="document.getElementById('ai-summary-{{ folder.id }}').classList.toggle('hidden')"
+                            class="text-primaryGreen-dark text-sm underline hover:text-primaryGreen">
+                        View AI Summary
+                    </button>
+                    <div id="ai-summary-{{ folder.id }}" class="hidden mt-2 text-sm text-gray-700">
+                        {{ folder.ai_summary or 'AI summary not yet available.' }}
+                    </div>
+
+                    <!-- Upload File Form -->
+                    <form action="{{ url_for('upload_file', folder_id=folder.id) }}" method="POST"
+                          enctype="multipart/form-data" class="flex gap-2 mt-4">
+                        <input type="file" name="file" required
+                               class="flex-grow border rounded px-2 py-1 text-sm" />
+                        <button type="submit"
+                                class="bg-primaryGreen-dark text-white px-3 py-2 rounded hover:bg-primaryGreen text-sm">
+                            Upload
+                        </button>
+                    </form>
+                </div>
+
+                <!-- View Modal Trigger -->
+                <button onclick="openModal({{ folder.id }})"
+                        class="absolute top-5 right-8 text-primaryGreen-dark hover:underline text-sm">
+                    View
+                </button>
+
+                <!-- Delete Folder -->
+                <form action="{{ url_for('delete_folder', folder_id=folder.id) }}" method="POST"
+                      class="absolute bottom-1 left-15" onsubmit="return confirm('Delete this folder and its files?')">
+                    <button class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                </form>
+            </div>
+
+            <!-- Modal -->
+            <div id="modal-{{ folder.id }}"
+                 class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-2xl shadow-lg p-6 w-11/12 max-w-5xl relative max-h-[90vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-primaryGreen-dark mb-4">{{ folder.name }}</h2>
+
+                        <ul class="space-y-3">
+                            {% for f in folder.files %}
+                            <li class="border-b pb-2">
+                                <div class="flex justify-between items-center">
+                                    <a href="{{ url_for('download_file', file_id=f.id) }}"
+                                       class="text-blue-600 hover:underline">{{ f.filename }}</a>
+                                    <form action="{{ url_for('delete_file', file_id=f.id) }}" method="POST"
+                                          onsubmit="return confirm('Delete this file?')">
+                                        <button class="text-red-500 hover:text-red-700 text-sm">🗑</button>
+                                    </form>
+                                </div>
+                                <p class="text-sm text-gray-600 mt-1">AI Summary: {{ f.summary or 'Not yet generated.' }}</p>
+                            </li>
+                            {% else %}
+                            <li class="italic text-gray-500">No files uploaded.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <button onclick="closeModal({{ folder.id }})"
+                            class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-xl">×</button>
+                    <button onclick="closeModal({{ folder.id }})"
+                            class="mt-4 bg-primaryGreen-dark text-white px-4 py-2 rounded-lg hover:bg-primaryGreen w-full col-span-2">
+                        Close
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    <section class="mb-16 px-4 md:px-16 animate-fadeIn">
+        <h2 class="text-3xl font-bold mb-6 text-primaryGreen-dark">Case Builder</h2>
+
+        <section class="bg-white rounded-3xl shadow-xl p-8 mb-10 hover:shadow-2xl transition-shadow">
+            <!-- Toolbar -->
+            <div id="quill-toolbar" class="mb-4">
+            <span class="ql-formats">
+                <select class="ql-header">
+                    <option selected></option>
+                    <option value="1"></option>
+                    <option value="2"></option>
+                </select>
+                <select class="ql-size">
+                    <option value="small"></option>
+                    <option selected></option>
+                    <option value="large"></option>
+                    <option value="huge"></option>
+                </select>
+            </span>
+                <span class="ql-formats">
+                <button class="ql-bold"></button>
+                <button class="ql-italic"></button>
+                <button class="ql-underline"></button>
+            </span>
+                <span class="ql-formats">
+                <button class="ql-list" value="ordered"></button>
+                <button class="ql-list" value="bullet"></button>
+            </span>
+            </div>
+
+            <!-- Editor -->
+            <div id="quill-editor" class="bg-white border border-gray-300 rounded-lg p-4 min-h-[100px]"></div>
+
+            <!-- Download Button -->
+            <div class="mt-6 text-right">
+                <button onclick="downloadDoc()" class="bg-primaryGreen-dark text-white px-6 mr-5 py-2 rounded-xl hover:bg-primaryGreen transition">
+                    Download as HTML
+                </button>
+                <button onclick="openModal('chatbot')" class="bg-primaryGreen-dark text-white px-6 py-2 rounded-xl hover:bg-primaryGreen transition">
+                    Chat with Chatbot
+                </button>
+            </div>
+
+            <!-- Chatbot Modal -->
+            <div id="modal-chatbot" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 relative">
+                    <!-- Close Button -->
+                    <button onclick="closeModal('chatbot')" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900 text-xl font-bold">
+                        &times;
+                    </button>
+
+                    <!-- Chatbot Header -->
+                    <h3 class="text-2xl font-bold text-primaryGreen-dark mb-4">Debate Chatbot Assistant</h3>
+
+                    <!-- Chatbot Interface Placeholder -->
+                    <div class="border rounded-lg p-4 h-96 overflow-y-auto bg-gray-50 text-sm text-gray-800" id="chatbot-content">
+                        <!-- You can inject your chatbot messages here dynamically -->
+                        <p class="italic text-gray-500">Ask me anything about your case, arguments, or how to refute your opponent...</p>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="mt-4 flex gap-2">
+                        <input type="text" id="chatbot-input" class="flex-grow border rounded-lg px-4 py-2" placeholder="Type your question..." />
+                        <button class="bg-primaryGreen-dark text-white px-4 py-2 rounded-lg hover:bg-primaryGreen transition">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const quill = new Quill('#quill-editor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: '#quill-toolbar'
+                    }
+                });
+
+                window.downloadDoc = function () {
+                    const html = quill.root.innerHTML;
+                    const blob = new Blob([html], { type: "text/html" });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "case.html";
+                    a.click();
+
+                    URL.revokeObjectURL(url);
+                };
+            });
+        </script>
+    </section>
+
+    <section class="mt-60 mb-16 px-4 md:px-16 animate-fadeIn">
+        <h2 class="text-3xl font-bold mb-6 text-primaryGreen-dark">AI Case Analyzer</h2>
+
+        <section class="bg-white rounded-3xl shadow-xl p-8 mb-10 hover:shadow-2xl transition-shadow space-y-6">
+
+            <!-- Mode Selector -->
+            <div class="flex flex-wrap gap-4 mb-4">
+                <label class="font-semibold text-primaryGreen-dark">Analysis Type:</label>
+                <select id="analysisType" class="border rounded px-4 py-2 text-sm">
+                    <option value="full">Full Analysis</option>
+                    <option value="block">Block Analysis</option>
+                    <option value="refinement">Refinement</option>
+                </select>
+            </div>
+
+            <!-- Optional Notes -->
+            <div>
+                <label class="block font-semibold text-primaryGreen-dark mb-1">Optional Notes for AI:</label>
+                <textarea id="userNotes" rows="3" placeholder="Include any context, judge preferences, or strategy notes..."
+                          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primaryGreen-light"></textarea>
+            </div>
+
+            <!-- File Upload -->
+            <div>
+                <label class="block font-semibold text-primaryGreen-dark mb-1">Upload Your Case (.docx):</label>
+                <form id="analyzeForm" enctype="multipart/form-data">
+                    <input type="file" name="file" accept=".docx" required
+                           class="w-full px-4 py-2 border rounded-lg mb-4">
+                    <button type="submit"
+                            class="bg-primaryGreen-dark text-white px-6 py-2 rounded-xl hover:bg-primaryGreen transition">
+                        Analyze
+                    </button>
+                </form>
+            </div>
+
+            <!-- Judge vs Coach Mode -->
+            <div>
+                <label class="block font-semibold text-primaryGreen-dark mb-1">Feedback Style:</label>
+                <select id="feedbackStyle" class="border rounded px-4 py-2 text-sm">
+                    <option value="coach">Coach Style</option>
+                    <option value="judge">Judge Style</option>
+                </select>
+            </div>
+
+            <!-- Analysis Result -->
+            <div id="analysisResult" class="mt-6 hidden">
+                <h3 class="text-2xl font-bold mb-4 text-primaryGreen-dark">Analysis Results</h3>
+
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">General Wording Feedback</h4>
+                        <p id="wordingFeedback" class="text-gray-700 text-sm italic">Loading...</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Technical Feedback</h4>
+                        <p id="technicalFeedback" class="text-gray-700 text-sm italic">Loading...</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Future Suggestions</h4>
+                        <p id="futureSuggestions" class="text-gray-700 text-sm italic">Loading...</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Flow Map</h4>
+                        <p id="flowMap" class="text-gray-700 text-sm italic">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <script>
+            document.getElementById("analyzeForm").addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const formData = new FormData();
+                const fileInput = this.querySelector("input[name='file']");
+                formData.append("file", fileInput.files[0]);
+                formData.append("analysis_type", document.getElementById("analysisType").value);
+                formData.append("user_notes", document.getElementById("userNotes").value);
+                formData.append("feedback_style", document.getElementById("feedbackStyle").value);
+
+                const resultDiv = document.getElementById("analysisResult");
+                resultDiv.classList.remove("hidden");
+                resultDiv.querySelectorAll("p").forEach(p => p.textContent = "Analyzing...");
+
+                try {
+                    const res = await fetch("/analyze_case", {
+                        method: "POST",
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.error) {
+                        alert(data.error);
+                        resultDiv.classList.add("hidden");
+                    } else {
+                        document.getElementById("wordingFeedback").textContent = data.wording || "N/A";
+                        document.getElementById("technicalFeedback").textContent = data.technical || "N/A";
+                        document.getElementById("futureSuggestions").textContent = data.future || "N/A";
+                        document.getElementById("flowMap").textContent = data.flow || "N/A";
+                    }
+                } catch (err) {
+                    alert("Something went wrong.");
+                    resultDiv.classList.add("hidden");
+                }
+            });
+        </script>
+    </section>
+</div>
+
+</body>
