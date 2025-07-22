@@ -1,18 +1,25 @@
 This tool is an advanced AI-powered debate suite designed to elevate the way debaters practice, prepare, and improve. It integrates three core functionalities that together form a comprehensive ecosystem for competitive debate preparation and skill refinement.
 
-## Seamless User Experience & Centralized Dashboard
+## Website Functionalities
+
+Seamless User Experience & Centralized Dashboard
+
 From the moment a user logs in through the authentication page—either by creating a new account or accessing an existing one—they are immersed in a unified dashboard. This centralized hub allows debaters to manage their workflow: tracking tasks related to upcoming tournaments, engaging with a conversational AI chatbot for quick questions or sparring, and storing judge feedback from past competitions. By compiling all debate-related activities and materials in one place, users can stay organized, focused, and efficient.
 
-## Realistic AI-Driven Mock Debates
+Realistic AI-Driven Mock Debates
+
 On the main page, users can engage in AI-assisted debate simulations, practicing in 2v1 formats or with an AI partner for 2v2. This flexibility allows students to simulate real-world tournament conditions—even without a team present. These mock debates are not just casual sparring; they are structured and generate downloadable content including transcripts, speeches, and flowcharts. This enables students to reflect deeply on their arguments, delivery, and structure outside of the live practice environment.
 
-## Rich Feedback & Analytical Tools
+Rich Feedback & Analytical Tools
+
 The analysis page transforms raw practice data into actionable insight. Users can upload recordings or files from both AI debates and in-person rounds, receiving tailored feedback that highlights strengths, weaknesses, logical inconsistencies, and stylistic opportunities for improvement. This level of diagnostic support empowers debaters to take ownership of their growth by understanding not just what went wrong—but why.
 
-## Strategic Case Building with AI Assistance
+Strategic Case Building with AI Assistance
+
 Recognizing that feedback without implementation is wasted potential, the platform includes powerful tools to help debaters construct and refine their affirmative (Aff) and negative (Neg) cases. Leveraging AI-generated suggestions, users can adapt their argumentation style, deepen evidence bases, and strategically tweak frameworks. This turns passive feedback into active development and gives users the confidence that their cases are battle-tested and intelligently built.
 
-## The Impact: Transforming Debate Preparation at Scale
+The Impact: Transforming Debate Preparation at Scale
+
 The implications of this tool extend far beyond convenience. Here’s how it stands to reshape the debate landscape:
 Accessibility & Equity: Students from under-resourced schools or without access to experienced coaches can now receive world-class practice and feedback anytime, anywhere.
 
