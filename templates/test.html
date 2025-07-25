@@ -1,0 +1,29 @@
+async function showStrategyAnalysis() {
+try {
+const judge = "tech"; // or dynamically from a dropdown later
+const side = document.getElementById("side").value;
+const resp = await axios.post('/api/debate/strategy', {
+speeches: flowData,  // flowData is already collected
+judge_paradigm: judge,
+side
+});
+
+const data = resp.data;
+
+// Update UI elements
+const rebuttalList = document.getElementById("rebuttal-strategy");
+rebuttalList.innerHTML = "";
+data.rebuttal_strategy.forEach(item => {
+const li = document.createElement("li");
+li.textContent = item;
+rebuttalList.appendChild(li);
+});
+
+document.getElementById("judge-adaptation").textContent = data.judge_adaptation;
+document.getElementById("strategy-score").textContent = `Score: ${data.strategy_score}/100 – ${data.score_explanation}`;
+
+document.getElementById("strategy-analysis-card").classList.remove("hidden");
+} catch (err) {
+console.error("Strategy analysis failed:", err);
+}
+}

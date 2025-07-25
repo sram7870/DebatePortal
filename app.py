@@ -1,8 +1,9 @@
+import subprocess
 from flask import Flask, render_template, request, redirect, jsonify, g, send_file, Blueprint, url_for, flash, session, send_from_directory
 from sqlalchemy.sql.functions import current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
-import sqlite3, os, requests, logging, json, re
+import sqlite3, os, requests, logging, json, re, whisper, tempfile
 from docx import Document
 
 from werkzeug.utils import secure_filename
@@ -13,11 +14,13 @@ app.secret_key = os.urandom(24)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+whisper_model = whisper.load_model("medium")
+
 DB_FILE = 'debate_portal.db'
 TOURNY_UPLOAD_FOLDER = 'uploads/tournaments'
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 app.config['UPLOAD_FOLDER'] = TOURNY_UPLOAD_FOLDER
@@ -148,19 +151,18 @@ def init_db():
               );
           ''')
 
-    c.execute('''
-            CREATE TABLE IF NOT EXISTS debates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                title TEXT,
-                side TEXT,
-                elo INTEGER,
-                transcript TEXT,
-                ai_responses TEXT,
-                summary TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id));
-        ''')
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS debates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT,
+            side TEXT,
+            elo INTEGER,
+            transcript TEXT,
+            ai_responses TEXT,
+            summary TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
+    """)
 
     conn.commit()
 
@@ -405,7 +407,6 @@ def add_task():
         print("AI Error:", e)
         summary = "No summary available."
         tag = "General"
-        print("[DEBUG] OpenRouter raw response:", result)
 
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
@@ -422,7 +423,16 @@ def add_task():
 @app.route('/dashboard/delete_task/<int:task_id>', methods=['POST'])
 def delete_task(task_id):
     user_id = session.get('user_id')
-    if not user_id:from werkzeug.utils import secure_filename
+    if not user_id:
+        return redirect(url_for('auth'))
+
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM tasks WHERE id = ? AND user_id = ?", (task_id, user_id))
+        conn.commit()
+
+    flash("Task deleted successfully.", "info")
+    return redirect(url_for('dashboard'))
 
 from flask import send_from_directory
 
@@ -563,7 +573,7 @@ def delete_tournament_file(file_id):
         c = conn.cursor()
         c.execute('''
                   SELECT tf.filepath, t.user_id FROM tournament_files tf
-                                                         JOIN tournaments t ON tf.tournament_id = t.id
+                  JOIN tournaments t ON tf.tournament_id = t.id
                   WHERE tf.id = ?
                   ''', (file_id,))
         row = c.fetchone()
@@ -628,6 +638,10 @@ def chatbot_message():
 
     bot_reply = call_openrouter_gpt(prompt, max_tokens=800)
     return jsonify({"reply": bot_reply})
+
+@app.route("/debate")
+def debate():
+    return render_template("practice.html")
 
 # Route: Add Folder
 @app.route("/add_folder", methods=["POST"])
@@ -834,7 +848,7 @@ def extract_sections(response):
 @app.route('/past/')
 def past_debates():
     if 'user_id' not in session:
-        return redirect('/login')
+        return redirect('/auth')
 
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
@@ -893,155 +907,45 @@ def delete_debate(debate_id):
 
     return redirect("/past/")
 
-def generate_ai_analysis_for_speech(speech):
-    """
-    Calls OpenRouter GPT to generate full AI analysis for a single debate speech.
-    Returns a dict with the expected keys for the analysis.html template per speech.
-    """
-
-    prompt = f"""
-    You are an expert debate coach and AI analyst.
-
-    Analyze the following debate speech transcript and metadata:
-    Title: {speech['title']}
-    Speaker: {speech['speaker']}
-    Round: {speech['round']}
-    Transcript excerpt: {speech.get('transcript_excerpt', 'N/A')}
-    Previous speech for reference: {speech.get('previous_speech', 'N/A')}
-
-    Provide a detailed, structured JSON response containing the following categories:
-
-    1. Content Feedback:
-      - argumentClarity: Comments on clarity of tags, warrants, impacts.
-      - evidenceQuality: Comments on credibility, currency, relevance.
-      - internalLinkChains: Comments on logical consistency and warranting.
-
-    2. Strategic Execution:
-      - argumentSelection: Comments on strategy given round context.
-      - clash: How well responses answer opponent arguments.
-      - depthVsBreadth: Comments on argument development depth.
-
-    3. Style and Structure:
-      - organization: Comments on speech structure and signposting.
-      - timeAllocation: Comments on time spent on key arguments.
-      - persuasiveness: Comments on rhetorical and logical persuasiveness.
-
-    4. Technical Argument Evaluation:
-      - droppedArguments: Arguments that were conceded or dropped.
-      - ineffectiveResponses: Responses that fail to answer arguments.
-      - overviewsWeighing: Quality of framing and weighing arguments.
-      - useOfTheory: Proper use of theory, T-presses, K arguments.
-
-    Return ONLY valid JSON in this exact format:
-
-    {{
-      "content": {{
-        "argumentClarity": "...",
-        "evidenceQuality": "...",
-        "internalLinkChains": "..."
-      }},
-      "strategy": {{
-        "argumentSelection": "...",
-        "clash": "...",
-        "depthVsBreadth": "..."
-      }},
-      "style": {{
-        "organization": "...",
-        "timeAllocation": "...",
-        "persuasiveness": "..."
-      }},
-      "technical": {{
-        "droppedArguments": "...",
-        "ineffectiveResponses": "...",
-        "overviewsWeighing": "...",
-        "useOfTheory": "..."
-      }}
-    }}
-
-    IMPORTANT:
-    - Be concise but insightful.
-    - Avoid explanations outside the JSON.
-    """
-
-    try:
-        raw = call_openrouter_gpt(prompt, max_tokens=1200)  # Your wrapper for the API call
-        analysis = json.loads(raw)
-    except Exception as e:
-        logger.exception("Failed to parse AI response: %s", e)
-        # Fallback placeholder with neutral feedback
-        analysis = {
-            "content": {
-                "argumentClarity": "Unable to generate feedback at this time.",
-                "evidenceQuality": "Unable to generate feedback at this time.",
-                "internalLinkChains": "Unable to generate feedback at this time."
-            },
-            "strategy": {
-                "argumentSelection": "Unable to generate feedback at this time.",
-                "clash": "Unable to generate feedback at this time.",
-                "depthVsBreadth": "Unable to generate feedback at this time."
-            },
-            "style": {
-                "organization": "Unable to generate feedback at this time.",
-                "timeAllocation": "Unable to generate feedback at this time.",
-                "persuasiveness": "Unable to generate feedback at this time."
-            },
-            "technical": {
-                "droppedArguments": "Unable to generate feedback at this time.",
-                "ineffectiveResponses": "Unable to generate feedback at this time.",
-                "overviewsWeighing": "Unable to generate feedback at this time.",
-                "useOfTheory": "Unable to generate feedback at this time."
-            }
-        }
-    return analysis
-
-def generate_full_round_analysis(speeches):
-    """
-    Takes a list of speech dicts, calls generate_ai_analysis_for_speech on each,
-    and returns a list of dicts ready to feed your UI.
-    """
-    results = []
-    for sp in speeches:
-        feedback = generate_ai_analysis_for_speech(sp)
-        results.append({
-            "id": sp["id"],
-            "name": sp["name"],
-            "feedback": feedback
-        })
-    return results
-
-analysis_bp = Blueprint('analysis', __name__)
-
-@analysis_bp.route('/analysis/<int:round_id>')
+@app.route('/analysis/<int:round_id>')
 def analysis_page(round_id):
-    speeches = get_speeches_for_round(round_id)
+    return render_template("analysis.html")
 
-    # If any speech has no feedback, call AI and save
-    for speech in speeches:
-        if not speech["feedback"]:
-            feedback = generate_ai_analysis_for_speech(speech)
-            speech["feedback"] = feedback
-            save_feedback_for_speech(speech["id"], feedback)
+@app.route("/practice/transcribe", methods=["POST"])
+def transcribe_audio():
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio uploaded"}), 400
 
-    return render_template("analysis.html", speeches=speeches)
+    audio = request.files['audio']
+    ext = os.path.splitext(audio.filename)[1].lower()
 
+    # Accept only .wav to avoid ffmpeg
+    if ext != ".wav":
+        return jsonify({"error": "Only .wav files are supported to avoid ffmpeg dependency"}), 400
 
-
-def save_feedback_for_speech(speech_id, feedback):
-    """
-    Saves the AI-generated feedback JSON to the database.
-    """
-    import json
-    conn = sqlite3.connect(DB_FILE)
+    # Save and process .wav
     try:
-        cur = conn.cursor()
-        cur.execute("""
-                    UPDATE speeches
-                    SET feedback_json = ?
-                    WHERE id = ?
-                    """, (json.dumps(feedback), speech_id))
-        conn.commit()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        temp_path = tmp.name
+        tmp.close()
+        audio.save(temp_path)
+        print(f"[DEBUG] Saved WAV to: {temp_path}")
+    except Exception as file_err:
+        return jsonify({"error": f"Failed to save audio file: {file_err}"}), 500
+
+    try:
+        result = whisper_model.transcribe(temp_path)
+        transcript = result["text"]
+        print(transcript)
+        return jsonify({"transcript": transcript})
+    except Exception as e:
+        print("Whisper local error:", e)
+        return jsonify({"transcript": "[Transcription failed]", "error": str(e)}), 500
     finally:
-        conn.close()
+        try:
+            os.remove(temp_path)
+        except Exception as cleanup_err:
+            print("Cleanup error:", cleanup_err)
 
 
 def get_db():
@@ -1056,87 +960,126 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-
-@app.route('/api/debate/ai/respond', methods=['POST'])
-def ai_respond():
-    data = request.json
+@app.route("/api/debate/ai/respond", methods=["POST"])
+def ai_response():
+    data = request.get_json()
     prompt = data.get("prompt", "")
+
     if not prompt:
-        return jsonify({"error": "Missing prompt"}), 400
+        return jsonify({"response": "No prompt provided."}), 400
 
-    response_text = call_openrouter_gpt(prompt)
-    return jsonify({"response": response_text})
+    response = call_openrouter_gpt(prompt)
+    return jsonify({"response": response})
 
-# Save debate data route
-@app.route('/api/debate/save', methods=['POST'])
+@app.route("/api/debate/save", methods=["POST"])
 def save_debate():
-    data = request.json
-    user_id = data.get("user_id")  # Assuming you send this securely via auth/session
-    title = data.get("title", "Untitled Debate")
-    side = data.get("side", "Aff")
-    elo = data.get("elo", 2000)
-    transcript = data.get("transcript", "")
-    ai_responses = data.get("ai_responses", "")
+    data = request.get_json()
+    user_id = data.get("user_id")
+    title = data.get("title")
+    side = data.get("side")
+    elo = data.get("elo")
+    transcript = data.get("transcript")
+    ai_responses = data.get("ai_responses")
     summary = data.get("summary", "")
+    strategy_score = data.get("strategy_score")
 
-    db = get_db()
-    cur = db.cursor()
-    cur.execute("""
-                INSERT INTO debates (user_id, title, side, elo, transcript, ai_responses, summary, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (user_id, title, side, elo, transcript, ai_responses, summary, datetime.utcnow()))
-    db.commit()
-    return jsonify({"status": "success", "debate_id": cur.lastrowid})
+    conn = sqlite3.connect("debates.db")
+    c = conn.cursor()
+    c.execute("""
+              INSERT INTO debates (user_id, title, side, elo, transcript, ai_responses, summary, strategy_score)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              """, (user_id, title, side, elo, transcript, ai_responses, summary, strategy_score))
+    conn.commit()
+    conn.close()
 
-# Fetch user debate history
-@app.route('/api/debate/history', methods=['GET'])
-def debate_history():
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
+    return jsonify({"status": "saved"})
 
-    db = get_db()
-    debates = db.execute("SELECT * FROM debates WHERE user_id = ? ORDER BY timestamp DESC", (user_id,)).fetchall()
-    debates_list = [dict(row) for row in debates]
-    return jsonify({"debates": debates_list})
+@app.route("/api/debate/history", methods=["GET"])
+def get_debate_history():
+    user_id = request.args.get("user_id", type=int)
+    conn = sqlite3.connect("debates.db")
+    c = conn.cursor()
+    c.execute("""
+              SELECT title, side, elo, transcript, ai_responses, summary, strategy_score, timestamp
+              FROM debates
+              WHERE user_id = ?
+              ORDER BY timestamp DESC
+                  LIMIT 10
+              """, (user_id,))
+    rows = c.fetchall()
+    conn.close()
 
-@app.route('/debate', methods=['GET'])
-def practice_debate():
-    return render_template("practice.html")
-
-# Flowchart generation route (simple example)
-@app.route('/api/debate/flowchart', methods=['POST'])
-def generate_flowchart():
-    """
-    Accepts a JSON list of speeches with labels and text:
-    [
-        {"label": "1AC", "text": "..."},
-        {"label": "1NC", "text": "..."},
-        ...
+    debates = [
+        {
+            "title": r[0],
+            "side": r[1],
+            "elo": r[2],
+            "transcript": r[3],
+            "ai_responses": r[4],
+            "summary": r[5],
+            "strategy_score": r[6],
+            "timestamp": r[7]
+        }
+        for r in rows
     ]
+    return jsonify({"debates": debates})
 
-    Returns structured JSON of argument nodes with simplistic "complexity" scores.
-    """
-    data = request.json
-    speeches = data.get("speeches")
-    if not speeches or not isinstance(speeches, list):
-        return jsonify({"error": "Invalid or missing speeches data"}), 400
+@app.route("/api/debate/flowchart", methods=["POST"])
+def generate_flowchart():
+    data = request.get_json()
+    speeches = data.get("speeches", [])
 
-    # Dummy complexity scoring: length of speech text + random factor
-    import random
-    nodes = []
-    for s in speeches:
-        text_len = len(s.get("text", ""))
-        complexity = max(1, min(20, text_len // 50 + random.randint(-3, 3)))
-        nodes.append({
-            "label": s.get("label"),
-            "complexity_score": complexity,
-            "text_snippet": s.get("text", "")[:100]  # first 100 chars
-        })
+    flowchart_prompt = """
+You are an expert policy debate strategist. Given the following list of speeches, extract and label all arguments by their type (Advantage, Disadvantage, Counterplan, Kritik, Topicality, Framework, Theory, etc), whether they're extended, dropped, or answered. Also assign a strategic importance score (1-10) and a unique ID to each.
 
-    return jsonify({"flowchart": nodes})
+Return the flowchart as a JSON array of nodes, each with: id, label, type, status, importance, parent (if applicable).
 
+Example input:
+["""
+    for speech in speeches:
+        flowchart_prompt += f"{speech['label']}: {speech['text']}\n"
+    flowchart_prompt += "\"\"\""
 
+    ai_output = call_openrouter_gpt(flowchart_prompt)
+
+    try:
+        flowchart = json.loads(ai_output)
+        return jsonify({"flowchart": flowchart})
+    except Exception as e:
+        logger.exception("Failed to parse GPT response as JSON")
+        return jsonify({"error": "AI response could not be parsed."}), 500
+
+@app.route("/api/debate/strategy", methods=["POST"])
+def strategy_suggestions():
+    data = request.get_json()
+    speeches = data.get("speeches", [])
+    judge_paradigm = data.get("judge_paradigm", "")
+    side = data.get("side", "")
+
+    strategy_prompt = f"""
+You are an elite policy debate strategist AI. Based on the following debate speeches and the judge's paradigm, provide three things:
+1. A suggested rebuttal strategy (organized by argument group).
+2. How to adapt this strategy to the judge paradigm.
+3. A speaker strategy score (1–100) and explanation.
+
+Debater Side: {side}
+Judge Paradigm: {judge_paradigm}
+
+Speeches:
+"""
+    for speech in speeches:
+        strategy_prompt += f"{speech['label']}: {speech['text']}\n"
+
+    result = call_openrouter_gpt(strategy_prompt, max_tokens=1000)
+
+    try:
+        # Optional: parse strategy score from text and save separately
+        score_line = next((line for line in result.split('\n') if "score" in line.lower()), None)
+        score = int(''.join(filter(str.isdigit, score_line))) if score_line else None
+    except:
+        score = None
+
+    return jsonify({"strategy": result, "score": score})
 
 if __name__ == "__main__":
     init_db()

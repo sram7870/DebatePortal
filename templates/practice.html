@@ -6,6 +6,7 @@
   <title>Advanced Mock Policy Debate</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mattdiamond/Recorderjs@master/dist/recorder.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     .chat-msg {
@@ -77,20 +78,22 @@
       <div id="summary-feedback" class="bg-gray-100 p-4 rounded-lg text-sm h-40 overflow-y-auto">Summary will be available after the round ends.</div>
     </div>
 
-    <!-- Redo Speech / Collapse Path Suggestions -->
-    <div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
-      <h3 class="text-xl font-semibold text-green-800 mb-2">Strategic Suggestions</h3>
-      <ul class="list-disc pl-6 space-y-2 text-sm">
-        <li>Redo Speech: Consider redoing the 1AC to strengthen your internal link story.</li>
-        <li>Collapse Path: Consider collapsing onto the advantage about global trade in the 2NR.</li>
-        <li>Judge Adaptation: Assume tech-leaning judge — emphasize conditionality debate.</li>
-      </ul>
-    </div>
-
-    <!-- Download Button -->
-    <div class="bg-white rounded-3xl shadow-xl p-8 text-center transition duration-300 hover:shadow-2xl animate-fadeIn">
-      <button class="bg-green-800 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition" onclick="downloadDebateFiles()">Download All Debate Files</button>
-    </div>
+    <!-- AI Strategy Analysis -->
+    <div id="strategy-analysis-card" class="hidden bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+      <h3 class="text-xl font-semibold text-green-800 mb-4">AI Strategy Analysis</h3><!-- Redo Speech / Collapse Path Suggestions -->
+      <div class="mb-4"><div class="bg-white rounded-3xl shadow-xl p-8 transition duration-300 hover:shadow-2xl animate-fadeIn">
+        <h4 class="font-semibold text-green-700">Rebuttal Strategy</h4>  <h3 class="text-xl font-semibold text-green-800 mb-2">Strategic Suggestions</h3>
+        <ul id="rebuttal-strategy" class="list-disc pl-6 text-sm space-y-1"></ul>  <ul class="list-disc pl-6 space-y-2 text-sm">
+      </div>    <li>Redo Speech: Consider redoing the 1AC to strengthen your internal link story.</li>
+      <div class="mb-4">    <li>Collapse Path: Consider collapsing onto the advantage about global trade in the 2NR.</li>
+        <h4 class="font-semibold text-green-700">Judge Adaptation</h4>    <li>Judge Adaptation: Assume tech-leaning judge — emphasize conditionality debate.</li>
+        <div id="judge-adaptation" class="bg-gray-100 p-3 rounded-md text-sm"></div>  </ul>
+      </div></div>
+      <div>
+        <h4 class="font-semibold text-green-700">Speaker Strategy Score</h4><!-- Download Button -->
+        <div id="strategy-score" class="text-sm mt-1"></div><div class="bg-white rounded-3xl shadow-xl p-8 text-center transition duration-300 hover:shadow-2xl animate-fadeIn">
+      </div>  <button class="bg-green-800 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition" onclick="downloadDebateFiles()">Download All Debate Files</button>
+    </div></div>
   </div>
 
   <!-- Sidebar AI Assistant -->
@@ -105,7 +108,13 @@
     <div class="border-t border-gray-200 pt-4">
       <h4 class="text-lg font-medium text-green-800 mb-2">Settings</h4>
       <label class="block mb-2">Opponent ELO:
-        <input type="number" id="elo" value="2000" max="3000" min="1000" class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+        <select class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+
+          <option value="option1">Novice</option>
+          <option value="option2">Junior Varsity</option>
+          <option value="option3">Champion</option>
+
+        </select>
       </label>
       <label class="block">Side:
         <select id="side" class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
@@ -130,87 +139,50 @@
   recognition.interimResults = true;
 
   recognition.onresult = (event) => {
-    let interim = '';
+    let interimTranscript = '';
     for (let i = event.resultIndex; i < event.results.length; ++i) {
-      interim += event.results[i][0].transcript;
+      const result = event.results[i];
+      const text = result[0].transcript;
+      if (result.isFinal) {
+        transcriptText += text + ' ';
+      } else {
+        interimTranscript += text;
+      }
     }
-    document.getElementById('transcript').value = interim;
+    document.getElementById('transcript').value = transcriptText + interimTranscript;
   };
 
-  function startSpeech() {
-    clearInterval(timer);
-    document.getElementById("transcript").value = "";
-    document.getElementById("ai-response").textContent = "Waiting for your speech...";
-    timeLeft = 8 * 60;
-    transcriptText = "";
-    timer = setInterval(() => {
-      timeLeft--;
-      let mins = Math.floor(timeLeft / 60);
-      let secs = timeLeft % 60;
-      document.getElementById("speech-timer").innerText = `Time: ${mins}:${secs.toString().padStart(2, '0')}`;
-      if (timeLeft <= 0) endSpeech();
-    }, 1000);
-    recognition.start();
+  let audioContext, recorder;
+
+  async function startSpeech() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const input = audioContext.createMediaStreamSource(stream);
+    recorder = new Recorder(input, { numChannels: 1 });
+    recorder.record();
+    console.log("Recording started...");
   }
 
-  async function endSpeech() {
-    clearInterval(timer);
-    recognition.stop();
+  function endSpeech() {
+    if (!recorder) return;
+    recorder.stop();
 
-    const transcript = document.getElementById("transcript").value.trim();
-    if (!transcript) {
-      alert("No speech detected!");
-      return;
-    }
+    recorder.exportWAV(async function (blob) {
+      console.log("Recording stopped. Sending to backend...");
+      const formData = new FormData();
+      formData.append("audio", blob, "speech.wav");
 
-    // Append speech transcript to history box
-    document.getElementById("debate-history").value += `\n[${currentSpeech}]\n${transcript}\n`;
-
-    // Add to flowData for flowchart
-    flowData.push({ label: currentSpeech, text: transcript });
-
-    // Call backend AI respond route
-    document.getElementById("ai-response").textContent = "AI is thinking...";
-    try {
-      const side = document.getElementById("side").value;
-      const elo = parseInt(document.getElementById("elo").value) || 2000;
-
-      // Send prompt to AI backend for response
-      const aiResp = await axios.post('/api/debate/ai/respond', { prompt: transcript });
-      const aiResponseText = aiResp.data.response || "AI failed to respond.";
-
-      document.getElementById("ai-response").textContent = aiResponseText;
-
-      // Save debate state to backend
-      const user_id = 1;  // Replace with real authenticated user id
-      const title = "Mock Debate"; // Could be dynamic or user input
-      await axios.post('/api/debate/save', {
-        user_id,
-        title,
-        side,
-        elo,
-        transcript,
-        ai_responses: aiResponseText,
-        summary: ""
+      const response = await fetch("/practice/transcribe", {
+        method: "POST",
+        body: formData
       });
 
-    } catch (error) {
-      console.error("Error during AI response or saving debate:", error);
-      document.getElementById("ai-response").textContent = "Error communicating with AI backend.";
-    }
+      const data = await response.json();
+      console.log(data.transcript)
+      document.getElementById("transcript").value = data.transcript || "[Transcription failed]";
+    });
 
-    // Move to next speech
-    const next = getNextSpeech(currentSpeech);
-    if (next === "2AR") {
-      await fetchDebateHistory();
-      await generateFlowchartFromBackend();
-      showSummary();
-      showFlowchart();
-    }
-
-    currentSpeech = next;
-    document.getElementById("speech-label").innerText = `Current Speech: ${currentSpeech}`;
-    document.getElementById("transcript").value = "";  // reset for next speech
+    recorder.clear();
   }
 
   function getNextSpeech(current) {
@@ -263,12 +235,10 @@
       const resp = await axios.post('/api/debate/flowchart', { speeches: flowData });
       const flowchartNodes = resp.data.flowchart || [];
 
-      // Update Chart.js with new data
       const ctx = document.getElementById("flowchart").getContext("2d");
       const labels = flowchartNodes.map(n => n.label);
       const data = flowchartNodes.map(n => n.complexity_score);
 
-      // Destroy old chart if exists
       if (window.flowChartInstance) window.flowChartInstance.destroy();
 
       window.flowChartInstance = new Chart(ctx, {
@@ -298,7 +268,8 @@
 
   function showSummary() {
     document.getElementById("summary-card").classList.remove("hidden");
-    document.getElementById("summary-feedback").textContent = "Summary: Both sides engaged with high clash. AI suggests the aff's solvency was underdeveloped while neg presented consistent strategic framing across speeches.";
+    document.getElementById("summary-feedback").textContent =
+            "Summary: Both sides engaged with high clash. AI suggests the aff's solvency was underdeveloped while neg presented consistent strategic framing across speeches.";
   }
 
   function showFlowchart() {
@@ -317,6 +288,44 @@
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  async function showStrategyAnalysis() {
+    try {
+      const judge = "tech"; // replace with dropdown selection if needed
+      const side = document.getElementById("side").value;
+      const resp = await axios.post('/api/debate/strategy', {
+        speeches: flowData,
+        judge_paradigm: judge,
+        side: side
+      });
+
+      const data = resp.data;
+
+      const rebuttalList = document.getElementById("rebuttrategy");
+      rebuttalList.innerHTML = "";
+      (data.rebuttal_strategy || []).forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        rebuttalList.appendChild(li);
+      });
+
+      document.getElementById("judge-adaptation").textContent = data.judge_adaptation || "N/A";
+      document.getElementById("strategy-score").textContent = `Score: ${data.strategy_score}/100 – ${data.score_explanation || ''}`;
+      document.getElementById("strategy-ans-card").classList.remove("hidden");
+    } catch (err) {
+      console.error("Strategy analysis failed:", err);
+    }
+  }
+
+  async function handleFinalSpeech(next) {
+    if (next === "2AR") {
+      await fetchDebateHistory();
+      await generateFlowchartFromBackend();
+      showSummary();
+      showFlowchart();
+      await showStrategyAnalysis();
+    }
   }
 </script>
 </body>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <title>Dashboard</title>
     <script src="{{ url_for('static', filename='dashScript.js') }}"></script>
+    <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -245,6 +246,46 @@
             </ul>
         </section>
     </div>
+
+    <!-- Chabot Section -->
+    <section class="mb-16 px-4 md:px-16 animate-fade-in-up">
+        <h2 class="text-3xl font-bold mb-6 text-primaryGreen-dark">Advertisement Chatbot</h2>
+
+        <div class="bg-white rounded-3xl shadow-xl p-8 transition-shadow duration-300 hover:shadow-2xl">
+
+            <!-- Chat Window -->
+            <div id="chat-window" class="h-[350px] overflow-y-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6 space-y-4">
+                <!-- Messages will appear here -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typing-indicator" class="flex items-center space-x-2 text-gray-500 mb-4 hidden">
+                <span>Bot is thinking</span>
+                <div class="typing-dots flex gap-1">
+                    <div class="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:.1s]"></div>
+                    <div class="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:.2s]"></div>
+                    <div class="h-2 w-2 rounded-full bg-gray-400 animate-bounce [animation-delay:.3s]"></div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <form id="chat-form" class="flex gap-3">
+                <input
+                        type="text"
+                        id="user-input"
+                        placeholder="Type something..."
+                        autocomplete="off"
+                        class="flex-grow border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primaryGreen"
+                />
+                <button
+                        type="submit"
+                        class="bg-primaryGreen-dark text-white px-6 py-2 rounded-lg hover:bg-primaryGreen transition"
+                >
+                    Send
+                </button>
+            </form>
+        </div>
+    </section>
 
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 gap-8">
         <section class="mb-16 px-4 md:px-16 animate-fade-in-up">
